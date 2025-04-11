@@ -10,7 +10,6 @@ Author: CireWire
 License: MIT
 """
 
-
 import sys
 import json
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
@@ -19,6 +18,15 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt6.QtCore import Qt
 
 class Recipe:
+    """
+    A class representing a single recipe in the application.
+    
+    Attributes:
+        name (str): The name of the recipe
+        ingredients (str): The list of ingredients, one per line
+        instructions (str): The cooking instructions
+        servings (int): The number of servings the recipe makes
+    """
     def __init__(self, name="", ingredients="", instructions="", servings=1):
         self.name = name
         self.ingredients = ingredients
@@ -26,14 +34,34 @@ class Recipe:
         self.servings = servings
 
 class RecipeManager(QMainWindow):
+    """
+    The main application window that manages the recipe collection.
+    
+    This class handles the GUI interface and all recipe management operations
+    including creating, editing, saving, deleting, and scaling recipes.
+    """
     def __init__(self):
+        """
+        Initialize the RecipeManager application.
+        
+        Sets up the UI, loads existing recipes from storage, and initializes
+        the current recipe to None.
+        """
         super().__init__()
-        self.recipes = []
-        self.current_recipe = None
+        self.recipes = []  # List to store all recipes
+        self.current_recipe = None  # Currently selected recipe
         self.initUI()
         self.load_recipes()
 
     def initUI(self):
+        """
+        Initialize and set up the user interface.
+        
+        Creates the main window layout with:
+        - Left panel: Recipe list and new recipe button
+        - Right panel: Recipe details form with name, servings, ingredients,
+          instructions, and action buttons
+        """
         self.setWindowTitle('Recipe Manager')
         self.setGeometry(100, 100, 800, 600)
 
@@ -104,6 +132,12 @@ class RecipeManager(QMainWindow):
         layout.addWidget(right_panel, 2)
 
     def load_recipes(self):
+        """
+        Load recipes from the JSON storage file.
+        
+        Attempts to read recipes from 'recipes.json'. If the file doesn't exist
+        or is empty, initializes an empty recipe list.
+        """
         try:
             with open('recipes.json', 'r') as f:
                 data = json.load(f)
@@ -113,15 +147,34 @@ class RecipeManager(QMainWindow):
             self.recipes = []
 
     def save_recipes(self):
+        """
+        Save all recipes to the JSON storage file.
+        
+        Converts all recipes to dictionaries and writes them to 'recipes.json'.
+        """
         with open('recipes.json', 'w') as f:
             json.dump([vars(recipe) for recipe in self.recipes], f)
 
     def update_recipe_list(self):
+        """
+        Update the recipe list widget with current recipes.
+        
+        Clears the list widget and repopulates it with the names of all
+        saved recipes.
+        """
         self.recipe_list.clear()
         for recipe in self.recipes:
             self.recipe_list.addItem(recipe.name)
 
     def select_recipe(self, item):
+        """
+        Handle recipe selection from the list.
+        
+        Args:
+            item (QListWidgetItem): The selected recipe item
+            
+        When a recipe is selected, loads its details into the form fields.
+        """
         recipe_name = item.text()
         for recipe in self.recipes:
             if recipe.name == recipe_name:
@@ -133,6 +186,12 @@ class RecipeManager(QMainWindow):
                 break
 
     def save_recipe(self):
+        """
+        Save the current recipe.
+        
+        Validates the form data and either creates a new recipe or updates
+        an existing one. Shows appropriate error messages if validation fails.
+        """
         name = self.name_edit.text().strip()
         ingredients = self.ingredients_edit.toPlainText().strip()
         instructions = self.instructions_edit.toPlainText().strip()
@@ -181,6 +240,12 @@ class RecipeManager(QMainWindow):
         QMessageBox.information(self, "Success", "Recipe saved successfully!")
 
     def delete_recipe(self):
+        """
+        Delete the currently selected recipe.
+        
+        Shows a confirmation dialog before deleting. If confirmed, removes
+        the recipe from the list and clears the form.
+        """
         if not self.current_recipe:
             return
 
@@ -196,6 +261,13 @@ class RecipeManager(QMainWindow):
             self.update_recipe_list()
 
     def scale_recipe(self):
+        """
+        Scale the recipe ingredients based on the new serving size.
+        
+        Calculates a scaling factor based on the original and new serving sizes,
+        then adjusts all ingredient amounts proportionally. Handles various
+        number formats and maintains the original units.
+        """
         if not self.current_recipe:
             QMessageBox.warning(self, "Error", "Please select a recipe first!")
             return
@@ -231,12 +303,24 @@ class RecipeManager(QMainWindow):
         self.current_recipe.servings = current_servings
 
     def clear_form(self):
+        """
+        Clear all form fields.
+        
+        Resets the recipe name, servings, ingredients, and instructions
+        to their default values.
+        """
         self.name_edit.clear()
         self.servings_spin.setValue(1)
         self.ingredients_edit.clear()
         self.instructions_edit.clear()
 
     def new_recipe(self):
+        """
+        Start creating a new recipe.
+        
+        Clears the current recipe selection and form fields to prepare
+        for entering a new recipe.
+        """
         self.current_recipe = None
         self.clear_form()
 
