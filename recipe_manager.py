@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Recipe Manager - A GUI application for managing cooking recipes
+LunarBatch - A GUI application for managing LunarBatch recipes
 
 This application allows users to create, edit, save, delete and scale recipes.
 It provides a user-friendly interface built with PyQt6 for home chefs to
@@ -8,14 +8,25 @@ manage their recipe collection.
 
 Author: CireWire
 License: MIT
+Version: 1.0.0
 """
 
 import sys
 import json
+import os
+import platform
+from pathlib import Path
+import requests
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                             QHBoxLayout, QPushButton, QLineEdit, QTextEdit, 
                             QListWidget, QLabel, QSpinBox, QMessageBox)
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices
+
+# Application version
+VERSION = "1.0.0"
+# GitHub repository for update checking
+GITHUB_REPO = "CireWire/symmetrical-doodle"
 
 class Recipe:
     """
@@ -33,7 +44,7 @@ class Recipe:
         self.instructions = instructions
         self.servings = servings
 
-class RecipeManager(QMainWindow):
+class LunarBatch(QMainWindow):
     """
     The main application window that manages the recipe collection.
     
@@ -42,7 +53,7 @@ class RecipeManager(QMainWindow):
     """
     def __init__(self):
         """
-        Initialize the RecipeManager application.
+        Initialize the LunarBatch application.
         
         Sets up the UI, loads existing recipes from storage, and initializes
         the current recipe to None.
@@ -50,8 +61,50 @@ class RecipeManager(QMainWindow):
         super().__init__()
         self.recipes = []  # List to store all recipes
         self.current_recipe = None  # Currently selected recipe
+        self.app_data_dir = self.get_app_data_dir()
+        self.recipes_file = self.app_data_dir / "recipes.json"
         self.initUI()
         self.load_recipes()
+        self.check_for_updates()
+
+    def get_app_data_dir(self):
+        """
+        Get the application data directory based on the operating system.
+        
+        Returns:
+            Path: Path to the application data directory
+        """
+        if platform.system() == "Windows":
+            app_data = Path(os.getenv('APPDATA'))
+        else:
+            app_data = Path.home() / ".local" / "share"
+        
+        app_dir = app_data / "LunarBatch"
+        app_dir.mkdir(parents=True, exist_ok=True)
+        return app_dir
+
+    def check_for_updates(self):
+        """
+        Check for application updates on GitHub.
+        
+        Compares the current version with the latest release on GitHub
+        and notifies the user if an update is available.
+        """
+        try:
+            response = requests.get(f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest")
+            if response.status_code == 200:
+                latest_version = response.json()["tag_name"].lstrip("v")
+                if latest_version > VERSION:
+                    reply = QMessageBox.question(
+                        self,
+                        "Update Available",
+                        f"A new version ({latest_version}) is available!\nWould you like to download it?",
+                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                    )
+                    if reply == QMessageBox.StandardButton.Yes:
+                        QDesktopServices.openUrl(QUrl(f"https://github.com/{GITHUB_REPO}/releases/latest"))
+        except Exception as e:
+            print(f"Error checking for updates: {e}")
 
     def initUI(self):
         """
@@ -135,25 +188,31 @@ class RecipeManager(QMainWindow):
         """
         Load recipes from the JSON storage file.
         
-        Attempts to read recipes from 'recipes.json'. If the file doesn't exist
-        or is empty, initializes an empty recipe list.
+        Attempts to read recipes from the recipes.json file in the app data directory.
+        If the file doesn't exist or is empty, initializes an empty recipe list.
         """
         try:
-            with open('recipes.json', 'r') as f:
-                data = json.load(f)
-                self.recipes = [Recipe(**recipe) for recipe in data]
-                self.update_recipe_list()
-        except FileNotFoundError:
+            if self.recipes_file.exists():
+                with open(self.recipes_file, 'r') as f:
+                    data = json.load(f)
+                    self.recipes = [Recipe(**recipe) for recipe in data]
+                    self.update_recipe_list()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error loading recipes: {str(e)}")
             self.recipes = []
 
     def save_recipes(self):
         """
         Save all recipes to the JSON storage file.
         
-        Converts all recipes to dictionaries and writes them to 'recipes.json'.
+        Converts all recipes to dictionaries and writes them to recipes.json
+        in the app data directory.
         """
-        with open('recipes.json', 'w') as f:
-            json.dump([vars(recipe) for recipe in self.recipes], f)
+        try:
+            with open(self.recipes_file, 'w') as f:
+                json.dump([vars(recipe) for recipe in self.recipes], f)
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Error saving recipes: {str(e)}")
 
     def update_recipe_list(self):
         """
@@ -326,6 +385,6 @@ class RecipeManager(QMainWindow):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = RecipeManager()
+    ex = LunarBatch()
     ex.show()
     sys.exit(app.exec()) 
